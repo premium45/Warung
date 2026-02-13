@@ -1,0 +1,3820 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#059669">
+    <meta name="description" content="kasir.dixz - Aplikasi Manajemen Warung dengan Barcode Scanner">
+    <title>kasir.dixz</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoia2FzaXIgZGl4eiIsInNob3J0X25hbWUiOiJrYXNpciBkaXh6IiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJzdGFydF91cmkiOiIuIiwib3JpZW50YXRpb24iOiJwb3J0cmFpdHMiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzA1OTY2OSIsInRoZW1lX2NvbG9yIjoiIzA1OTY2OSIsImljb25zIjpbeyJzcmMiOiJodHRwczovL2kuc3VwcGltZy5jb20vYjM5MjVkYzctYmY2Yy00YzdjLTkxNmItZWRkNWNmYmo0OGQzLnBuZyIsInR5cGUiOiJpbWFnZS9wbmciLCJzaXplcyI6IjE5MngxOTIifV19">
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                const swCode = `
+                    const CACHE_NAME = 'kasir-dixz-v1';
+                    const urlsToCache = [
+                        './',
+                        'index.html'
+                    ];
+                    
+                    self.addEventListener('install', function(event) {
+                        event.waitUntil(
+                            caches.open(CACHE_NAME)
+                                .then(function(cache) {
+                                    return cache.addAll(urlsToCache);
+                                })
+                        );
+                    });
+                    
+                    self.addEventListener('fetch', function(event) {
+                        event.respondWith(
+                            caches.match(event.request)
+                                .then(function(response) {
+                                    return response || fetch(event.request);
+                                })
+                        );
+                    });
+                `;
+                navigator.serviceWorker.register('data:application/javascript;base64,' + btoa(swCode));
+            });
+        }
+    </script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #059669;
+            --primary-dark: #047857;
+            --primary-light: #10B981;
+            --secondary: #FFFFFF;
+            --background: #F3F4F6;
+            --surface: #FFFFFF;
+            --text-primary: #1F2937;
+            --text-secondary: #6B7280;
+            --text-muted: #9CA3AF;
+            --danger: #EF4444;
+            --danger-dark: #DC2626;
+            --warning: #F59E0B;
+            --success: #10B981;
+            --border: #E5E7EB;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Splash Screen */
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease-out, visibility 0.5s ease-out;
+        }
+
+        #splash-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .splash-logo {
+            width: 120px;
+            height: 120px;
+            background-image: url('https://i.supaimg.com/b3925dc7-bf6c-4c7c-916b-edd5ccfb48d3.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            margin-bottom: 24px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.9; }
+        }
+
+        .splash-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--secondary);
+            margin-bottom: 8px;
+        }
+
+        .splash-subtitle {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .splash-loading {
+            margin-top: 32px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .splash-loading span {
+            width: 10px;
+            height: 10px;
+            background: var(--secondary);
+            border-radius: 50%;
+            animation: bounce 1.4s ease-in-out infinite;
+        }
+
+        .splash-loading span:nth-child(1) { animation-delay: 0s; }
+        .splash-loading span:nth-child(2) { animation-delay: 0.2s; }
+        .splash-loading span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+            40% { transform: scale(1.2); opacity: 1; }
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+            padding-bottom: 80px;
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            z-index: 1000;
+            box-shadow: var(--shadow);
+        }
+
+        .header-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--secondary);
+            letter-spacing: 0.5px;
+        }
+
+        .header-action {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .header-action:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.05);
+        }
+
+        .header-action svg {
+            width: 22px;
+            height: 22px;
+            fill: var(--secondary);
+        }
+
+        .close-camera-btn {
+            position: fixed;
+            top: 70px;
+            right: 16px;
+            padding: 10px 16px;
+            background: rgba(239, 68, 68, 0.95);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            z-index: 1001;
+            display: none;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .close-camera-btn:hover {
+            background: var(--danger-dark);
+        }
+
+        .close-camera-btn.show {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .main-content {
+            margin-top: 60px;
+            padding: 16px;
+            min-height: calc(100vh - 140px);
+        }
+
+        @keyframes pageSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes navItemBounce {
+            0% { transform: scale(0.9); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .page {
+            display: none;
+            opacity: 0;
+            transform: translateX(20px);
+            transition: opacity 0.25s ease-out, transform 0.25s ease-out;
+        }
+
+        .page.active {
+            display: block;
+            opacity: 1;
+            transform: translateX(0);
+            animation: pageSlideIn 0.3s ease-out;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 70px;
+            background: var(--surface);
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-start;
+            padding-top: 8px;
+            box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.08);
+            z-index: 1000;
+            border-top: 1px solid var(--border);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            height: 100%;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            transform-origin: center center;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .nav-item svg {
+            width: 24px;
+            height: 24px;
+            fill: none;
+            stroke: var(--text-muted);
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-item span {
+            font-size: 10px;
+            font-weight: 500;
+            color: var(--text-muted);
+            margin-top: 4px;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-item.active {
+            animation: navItemBounce 0.3s ease-out;
+        }
+
+        .nav-item.active svg {
+            stroke: var(--primary);
+            transform: scale(1.1);
+        }
+
+        .nav-item.active span {
+            color: var(--primary);
+            font-weight: 600;
+            transform: scale(1.05);
+        }
+
+        .nav-item.active::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            width: 40px;
+            height: 3px;
+            background: var(--primary);
+            border-radius: 0 0 4px 4px;
+            animation: indicatorSlideIn 0.3s ease-out;
+        }
+
+        @keyframes indicatorSlideIn {
+            from { transform: scaleX(0); opacity: 0; }
+            to { transform: scaleX(1); opacity: 1; }
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-lg);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 14px 16px;
+            font-size: 15px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--surface);
+            color: var(--text-primary);
+            transition: var(--transition);
+            font-family: inherit;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .barcode-display {
+            background: var(--background);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 2px solid var(--success);
+        }
+
+        .barcode-display-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .barcode-display-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--primary);
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+        }
+
+        .barcode-display-clear {
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 50%;
+            background: var(--danger);
+            color: var(--secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .barcode-display-clear:hover {
+            background: var(--danger-dark);
+        }
+
+        .camera-container {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #E5E7EB 0%, #D1D5DB 100%);
+            border-radius: var(--radius);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+
+        .camera-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+
+        .camera-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+
+        .camera-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .camera-placeholder:hover {
+            opacity: 0.8;
+        }
+
+        .camera-placeholder svg {
+            width: 48px;
+            height: 48px;
+            stroke: var(--text-muted);
+        }
+
+        .camera-placeholder span {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .camera-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 16px;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.5));
+            display: none;
+            justify-content: center;
+            gap: 16px;
+        }
+
+        .camera-controls.active {
+            display: flex;
+        }
+
+        .camera-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: 4px solid var(--secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .camera-btn-capture {
+            background: var(--danger);
+        }
+
+        .camera-btn-capture:active {
+            transform: scale(0.9);
+        }
+
+        .camera-btn-switch {
+            background: rgba(255, 255, 255, 0.3);
+            width: 44px;
+            height: 44px;
+            margin-top: 6px;
+        }
+
+        .camera-btn-switch svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--secondary);
+        }
+
+        .camera-btn-flash {
+            background: rgba(255, 255, 255, 0.3);
+            width: 44px;
+            height: 44px;
+            margin-top: 6px;
+        }
+
+        .camera-btn-flash.active {
+            background: rgba(255, 255, 0, 0.4);
+        }
+
+        .camera-btn-flash svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--secondary);
+        }
+
+        .camera-btn-flash.active svg {
+            stroke: #FFFF00;
+        }
+
+        .capture-btn-inner {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--secondary);
+        }
+
+        .camera-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .camera-action-btn {
+            flex: 1;
+            padding: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-gallery {
+            background: var(--background);
+            color: var(--text-primary);
+        }
+
+        .btn-camera {
+            background: var(--primary);
+            color: var(--secondary);
+        }
+
+        .btn-gallery:hover, .btn-camera:hover {
+            opacity: 0.9;
+        }
+
+        .barcode-scanner-container {
+            position: relative;
+            width: 100%;
+            height: 180px;
+            background: linear-gradient(135deg, #1F2937 0%, #374151 100%);
+            border-radius: var(--radius);
+            overflow: hidden;
+            margin-bottom: 16px;
+            border: 2px solid var(--primary);
+        }
+
+        .barcode-scanner-container .html5-qrcode-element {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .barcode-scanner-container #barcode-video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+        }
+
+        .barcode-scanner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.7);
+            color: var(--secondary);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .barcode-scanner-overlay:hover {
+            background: rgba(0, 0, 0, 0.6);
+        }
+
+        .barcode-scanner-overlay svg {
+            width: 40px;
+            height: 40px;
+            stroke: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .barcode-scanner-overlay span {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .barcode-scanner-active .barcode-scanner-overlay {
+            display: none;
+        }
+
+        .barcode-scan-line {
+            position: absolute;
+            top: 50%;
+            left: 10%;
+            right: 10%;
+            height: 2px;
+            background: var(--primary);
+            box-shadow: 0 0 10px var(--primary);
+            animation: scanLine 2s ease-in-out infinite;
+        }
+
+        @keyframes scanLine {
+            0%, 100% { transform: translateY(-30px); opacity: 0.5; }
+            50% { transform: translateY(30px); opacity: 1; }
+        }
+
+        .barcode-scanner-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 12px;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+            display: none;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .barcode-scanner-active .barcode-scanner-controls {
+            display: flex;
+        }
+
+        .barcode-stop-btn {
+            padding: 10px 20px;
+            background: var(--danger);
+            color: var(--secondary);
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .barcode-stop-btn:hover {
+            background: var(--danger-dark);
+        }
+
+        .scanner-torch-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: var(--transition);
+        }
+
+        .scanner-torch-btn.active {
+            background: rgba(255, 255, 0, 0.4);
+            border-color: #FFFF00;
+            display: flex;
+        }
+
+        .scanner-torch-btn svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--secondary);
+        }
+
+        .scanner-torch-btn.active svg {
+            stroke: #FFFF00;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px 24px;
+            font-size: 15px;
+            font-weight: 600;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: var(--secondary);
+            box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(5, 150, 105, 0.5);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: var(--secondary);
+        }
+
+        .btn-danger:hover {
+            background: var(--danger-dark);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: var(--secondary);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .weight-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .weight-input {
+            flex: 1;
+        }
+
+        .weight-unit {
+            padding: 14px 20px;
+            background: var(--background);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .weight-unit.active {
+            background: var(--primary);
+            color: var(--secondary);
+            border-color: var(--primary);
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .product-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .product-image {
+            width: 100%;
+            height: 140px;
+            object-fit: cover;
+            background: var(--background);
+        }
+
+        .product-info {
+            padding: 12px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .product-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .product-barcode {
+            font-size: 11px;
+            color: var(--primary);
+            font-family: 'Courier New', monospace;
+            margin-bottom: 4px;
+            letter-spacing: 1px;
+        }
+
+        .product-price {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+
+        .product-weight {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .product-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: auto;
+        }
+
+        .product-btn {
+            flex: 1;
+            padding: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .product-btn-cart {
+            background: var(--primary);
+            color: var(--secondary);
+        }
+
+        .product-btn-cart:hover {
+            background: var(--primary-dark);
+        }
+
+        .product-btn-delete {
+            background: var(--danger);
+            color: var(--secondary);
+        }
+
+        .product-btn-delete:hover {
+            background: var(--danger-dark);
+        }
+
+        .product-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .cart-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: var(--surface);
+            border-radius: var(--radius-sm);
+            margin-bottom: 8px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .cart-item-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: var(--radius-sm);
+            margin-right: 12px;
+        }
+
+        .cart-item-details {
+            flex: 1;
+        }
+
+        .cart-item-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .cart-item-barcode {
+            font-size: 10px;
+            color: var(--primary);
+            font-family: 'Courier New', monospace;
+            margin-top: 2px;
+        }
+
+        .cart-item-price {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .cart-item-weight {
+            font-size: 12px;
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .cart-item-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .qty-btn {
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 50%;
+            background: var(--background);
+            color: var(--text-primary);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .qty-btn:hover {
+            background: var(--primary);
+            color: var(--secondary);
+        }
+
+        .remove-item-btn {
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 50%;
+            background: var(--danger);
+            color: var(--secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .remove-item-btn:hover {
+            background: var(--danger-dark);
+        }
+
+        .remove-item-btn svg {
+            width: 14px;
+            height: 14px;
+            stroke: var(--secondary);
+        }
+
+        .summary-section {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-radius: var(--radius);
+            padding: 20px;
+            color: var(--secondary);
+            margin-top: 16px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .summary-row:last-child {
+            margin-bottom: 0;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .summary-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .summary-value {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .summary-total {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .manual-input-section {
+            background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+            border-radius: var(--radius);
+            padding: 16px;
+            color: var(--secondary);
+            margin-bottom: 16px;
+        }
+
+        .manual-input-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .manual-input {
+            width: 100%;
+            padding: 14px 16px;
+            font-size: 18px;
+            font-weight: 600;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: var(--radius-sm);
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--secondary);
+            text-align: right;
+            margin-bottom: 12px;
+        }
+
+        .manual-input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .manual-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .manual-summary {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .manual-summary span:last-child {
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .add-manual-btn {
+            width: 100%;
+            padding: 12px;
+            margin-top: 12px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px dashed rgba(255, 255, 255, 0.5);
+            border-radius: var(--radius-sm);
+            color: var(--secondary);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .add-manual-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+
+        .manual-cart-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+            border-radius: var(--radius-sm);
+            margin-bottom: 8px;
+            color: var(--secondary);
+        }
+
+        .manual-cart-item-details {
+            flex: 1;
+        }
+
+        .manual-cart-item-name {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .manual-cart-item-price {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .manual-cart-item-remove {
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            color: var(--secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .manual-cart-item-remove:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .payment-section {
+            margin-top: 16px;
+        }
+
+        .payment-input {
+            width: 100%;
+            padding: 16px;
+            font-size: 18px;
+            font-weight: 600;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            text-align: right;
+        }
+
+        .payment-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .change-display {
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            margin-top: 8px;
+            font-weight: 600;
+            text-align: right;
+            transition: var(--transition);
+        }
+
+        .change-positive {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .change-negative {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        .debt-form {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow);
+        }
+
+        .debt-summary-section {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow);
+        }
+
+        .debt-summary-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .debt-summary-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .debt-summary-table th {
+            text-align: left;
+            font-size: 12px;
+            color: var(--text-secondary);
+            padding: 8px 4px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .debt-summary-table td {
+            padding: 10px 4px;
+            font-size: 14px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .debt-summary-table td:last-child {
+            text-align: right;
+            font-weight: 700;
+            color: var(--danger);
+        }
+
+        .debt-summary-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .debt-list {
+            margin-top: 16px;
+        }
+
+        .debt-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: var(--surface);
+            border-radius: var(--radius-sm);
+            margin-bottom: 8px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .debt-info {
+            flex: 1;
+        }
+
+        .debt-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .debt-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .debt-date {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .debt-amount {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--danger);
+            margin-left: 12px;
+        }
+
+        .debt-actions {
+            display: flex;
+            gap: 8px;
+            margin-left: 12px;
+        }
+
+        .debt-action-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .debt-share-btn {
+            background: var(--primary);
+            color: var(--secondary);
+        }
+
+        .debt-share-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .debt-delete-btn {
+            background: var(--danger);
+            color: var(--secondary);
+        }
+
+        .debt-delete-btn:hover {
+            background: var(--danger-dark);
+        }
+
+        .debt-action-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .debt-total {
+            background: linear-gradient(135deg, var(--warning) 0%, #D97706 100%);
+            color: var(--secondary);
+            padding: 16px;
+            border-radius: var(--radius);
+            margin-bottom: 16px;
+            font-weight: 700;
+            font-size: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .transaction-item {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .transaction-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .transaction-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .transaction-date {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .transaction-total {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .transaction-items {
+            border-top: 1px solid var(--border);
+            padding-top: 12px;
+        }
+
+        .transaction-product {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: var(--text-secondary);
+            padding: 4px 0;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            text-align: center;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            stroke: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .empty-state h3 {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .empty-state p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--text-primary);
+            color: var(--secondary);
+            padding: 12px 24px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 500;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 2000;
+            box-shadow: var(--shadow-lg);
+            max-width: 90%;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
+            padding: 20px;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 24px;
+            max-width: 320px;
+            width: 100%;
+            transform: scale(0.9);
+            transition: var(--transition);
+        }
+
+        .modal-overlay.show .modal {
+            transform: scale(1);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .modal-content {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-actions .btn {
+            flex: 1;
+        }
+
+        .search-container {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 14px 16px 14px 44px;
+            font-size: 14px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--surface);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            stroke: var(--text-muted);
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        .badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 20px;
+            height: 20px;
+            background: var(--danger);
+            color: var(--secondary);
+            border-radius: 50%;
+            font-size: 11px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-item {
+            position: relative;
+        }
+
+        .price-wrapper {
+            position: relative;
+        }
+
+        .price-prefix {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 15px;
+            color: var(--text-secondary);
+        }
+
+        .price-wrapper .form-input {
+            padding-left: 32px;
+        }
+
+        .weight-modal-product {
+            background: var(--background);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .weight-modal-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .weight-modal-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .weight-modal-price {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .weight-input-section {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-top: 16px;
+        }
+
+        .weight-input-section .form-input {
+            flex: 1;
+        }
+
+        .weight-input-section .weight-unit {
+            padding: 14px 16px;
+        }
+
+        .weight-preview {
+            background: rgba(5, 150, 105, 0.1);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            margin-top: 16px;
+            text-align: center;
+        }
+
+        .weight-preview-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .weight-preview-price {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-top: 4px;
+        }
+
+        .barcode-scanner-btn {
+            width: 100%;
+            padding: 14px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            border: 2px dashed var(--primary);
+            border-radius: var(--radius-sm);
+            background: rgba(5, 150, 105, 0.05);
+            color: var(--primary);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .barcode-scanner-btn:hover {
+            background: rgba(5, 150, 105, 0.1);
+        }
+
+        .barcode-scanner-btn svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .barcode-search-result {
+            background: rgba(5, 150, 105, 0.1);
+            border: 2px solid var(--primary);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            display: none;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .barcode-search-result.show {
+            display: flex;
+        }
+
+        .barcode-search-result-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .barcode-search-result-icon svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--secondary);
+        }
+
+        .barcode-search-result-info {
+            flex: 1;
+        }
+
+        .barcode-search-result-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .barcode-search-result-barcode {
+            font-size: 12px;
+            color: var(--primary);
+            font-family: 'Courier New', monospace;
+        }
+
+        .barcode-search-result-price {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        @media (min-width: 768px) {
+            .main-content {
+                max-width: 480px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            .product-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .product-scanner-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .product-scanner-row .barcode-scanner-btn {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        .product-scanner-row .search-input {
+            flex: 2;
+        }
+
+        .data-section {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow);
+        }
+
+        .data-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        .data-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .data-btn {
+            width: 100%;
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--surface);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .data-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .data-btn-primary {
+            background: var(--primary);
+            color: var(--secondary);
+            border-color: var(--primary);
+        }
+
+        .data-btn-primary:hover {
+            background: var(--primary-dark);
+            color: var(--secondary);
+        }
+
+        .data-btn-success {
+            background: var(--success);
+            color: var(--secondary);
+            border-color: var(--success);
+        }
+
+        .data-btn-success:hover {
+            background: #059669;
+        }
+    </style>
+</head>
+<body>
+    <!-- Splash Screen -->
+    <div id="splash-screen">
+        <div class="splash-logo"></div>
+        <div class="splash-title">kasir.dixz</div>
+        <div class="splash-subtitle">Aplikasi Manajemen Warung</div>
+        <div class="splash-loading">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <h1 class="header-title">WARUNG KITA</h1>
+        <div class="header-action" onclick="showShareOptions()">
+            <svg viewBox="0 0 24 24">
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" fill="none" stroke="currentColor" stroke-width="2"/>
+                <polyline points="16,6 12,2 8,6" fill="none" stroke="currentColor" stroke-width="2"/>
+                <line x1="12" y1="2" x2="12" y2="15" stroke="currentColor" stroke-width="2"/>
+            </svg>
+        </div>
+    </header>
+
+    <!-- Close Camera Button -->
+    <button class="close-camera-btn" id="close-camera-btn" onclick="stopAllCameras()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+        Tutup Kamera
+    </button>
+
+    <!-- Main Content -->
+    <main class="main-content" id="main-content">
+        <!-- Halaman 1: Input Produk -->
+        <div class="page active" id="page-input">
+            <div class="card">
+                <h2 class="section-title">Tambah Produk Baru</h2>
+                
+                <button class="barcode-scanner-btn" onclick="toggleInputBarcodeScanner()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>
+                        <line x1="7" y1="12" x2="13" y2="12"/>
+                        <line x1="7" y1="8" x2="9" y2="8"/>
+                        <line x1="7" y1="16" x2="9" y2="16"/>
+                    </svg>
+                    Scan Barcode Produk
+                </button>
+                
+                <div class="barcode-display" id="input-barcode-display" style="display: none;">
+                    <div>
+                        <div class="barcode-display-label">Kode Barcode</div>
+                        <div class="barcode-display-value" id="input-barcode-value">-</div>
+                    </div>
+                    <button class="barcode-display-clear" onclick="clearInputBarcode()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="barcode-scanner-container" id="input-barcode-scanner" style="display: none;">
+                    <div id="html5-code-input"></div>
+                    <div class="barcode-scanner-overlay" id="input-barcode-overlay" onclick="startInputBarcodeScanner()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>
+                            <line x1="7" y1="12" x2="13" y2="12"/>
+                        </svg>
+                        <span>Tap untuk Scan Barcode</span>
+                    </div>
+                    <div class="barcode-scan-line" id="input-scan-line" style="display: none;"></div>
+                    <div class="barcode-scanner-controls">
+                        <button class="barcode-stop-btn" onclick="stopInputBarcodeScanner()">Stop Scanner</button>
+                    </div>
+                    <button class="scanner-torch-btn" id="input-torch-btn" onclick="toggleInputTorch()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 18v-6l-4.5 -1.5L6 9l-1.5 4.5L3 12v6l4.5 1.5L6 21l1.5 -4.5L9 18z"/>
+                            <path d="M15 18v-6l4.5 1.5L18 9l1.5 4.5L21 12v6l-4.5 -1.5L18 21l-1.5 -4.5L15 18z"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="camera-container" id="camera-container">
+                    <video class="camera-video" id="camera-video" autoplay playsinline></video>
+                    <img class="camera-preview" id="camera-preview" alt="Preview">
+                    <div class="camera-placeholder" id="camera-placeholder" onclick="startCamera()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                            <circle cx="12" cy="13" r="4"/>
+                        </svg>
+                        <span>Tap untuk Ambil Foto Produk</span>
+                    </div>
+                    <div class="camera-controls" id="camera-controls">
+                        <button class="camera-btn camera-btn-switch" onclick="switchCamera()" id="switch-camera-btn" style="display: none;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                                <circle cx="12" cy="13" r="4"/>
+                                <path d="M15 2v4"/>
+                                <path d="M9 2v4"/>
+                            </svg>
+                        </button>
+                        <button class="camera-btn camera-btn-flash" onclick="toggleProductCameraFlash()" id="product-flash-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 18v-6l-4.5 -1.5L6 9l-1.5 4.5L3 12v6l4.5 1.5L6 21l1.5 -4.5L9 18z"/>
+                            </svg>
+                        </button>
+                        <button class="camera-btn camera-btn-capture" onclick="capturePhoto()">
+                            <div class="capture-btn-inner"></div>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="camera-actions" id="camera-actions" style="display: none;">
+                    <button class="camera-action-btn btn-gallery" onclick="openGallery()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21,15 16,10 5,21"/>
+                        </svg>
+                        Galeri
+                    </button>
+                    <button class="camera-action-btn btn-camera" onclick="startCamera()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                            <circle cx="12" cy="13" r="4"/>
+                        </svg>
+                        Kamera
+                    </button>
+                    <input type="file" id="gallery-input" accept="image/*" onchange="handleGallerySelect(event)">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Nama Produk</label>
+                    <input type="text" class="form-input" id="product-name" placeholder="Contoh: Indomie Goreng">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Harga (Rp)</label>
+                    <div class="price-wrapper">
+                        <span class="price-prefix">Rp</span>
+                        <input type="text" class="form-input" id="product-price" placeholder="12.000" inputmode="numeric" pattern="[0-9.]*" onkeyup="formatPrice(this)" onblur="formatPrice(this)">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Berat Produk (per satuan)</label>
+                    <div class="weight-row">
+                        <input type="number" class="form-input weight-input" id="product-weight" placeholder="0" inputmode="numeric" pattern="[0-9.]*">
+                        <button type="button" class="weight-unit active" id="unit-kg" onclick="setWeightUnit('kg')">Kg</button>
+                        <button type="button" class="weight-unit" id="unit-gram" onclick="setWeightUnit('gram')">Gram</button>
+                    </div>
+                    <small style="color: var(--text-muted); font-size: 11px; margin-top: 4px; display: block;">Berat per unit (contoh: 1 kg gula, 500 gram kopi)</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Deskripsi (Opsional)</label>
+                    <input type="text" class="form-input" id="product-desc" placeholder="Catatan tambahan...">
+                </div>
+
+                <button class="btn btn-primary" onclick="addProduct()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    Tambah Produk
+                </button>
+            </div>
+        </div>
+
+        <!-- Halaman 2: Produk -->
+        <div class="page" id="page-products">
+            <h2 class="section-title">Daftar Produk</h2>
+            
+            <button class="barcode-scanner-btn" id="product-scanner-btn" onclick="toggleProductBarcodeScanner()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>
+                    <line x1="7" y1="12" x2="13" y2="12"/>
+                </svg>
+                Scan Barcode Cari Produk
+            </button>
+            
+            <div class="barcode-search-result" id="barcode-search-result">
+                <div class="barcode-search-result-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20,6 9,17 4,12"/>
+                    </svg>
+                </div>
+                <div class="barcode-search-result-info">
+                    <div class="barcode-search-result-name" id="barcode-result-name">-</div>
+                    <div class="barcode-search-result-barcode" id="barcode-result-barcode">-</div>
+                </div>
+                <div class="barcode-search-result-price" id="barcode-result-price">-</div>
+                <button class="barcode-display-clear" onclick="clearBarcodeSearch()" style="margin-left: 8px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="barcode-scanner-container" id="product-barcode-scanner" style="display: none; margin-bottom: 16px;">
+                <div id="html5-code-product"></div>
+                <div class="barcode-scanner-overlay" id="product-barcode-overlay" onclick="startProductBarcodeScanner()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>
+                        <line x1="7" y1="12" x2="13" y2="12"/>
+                    </svg>
+                    <span>Tap untuk Scan Barcode</span>
+                </div>
+                <div class="barcode-scan-line" id="product-scan-line" style="display: none;"></div>
+                <div class="barcode-scanner-controls">
+                    <button class="barcode-stop-btn" onclick="stopProductBarcodeScanner()">Stop Scanner</button>
+                </div>
+                <button class="scanner-torch-btn" id="product-torch-btn" onclick="toggleProductTorch()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18v-6l-4.5 -1.5L6 9l-1.5 4.5L3 12v6l4.5 1.5L6 21l1.5 -4.5L9 18z"/>
+                        <path d="M15 18v-6l4.5 1.5L18 9l1.5 4.5L21 12v6l-4.5 -1.5L18 21l-1.5 -4.5L15 18z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="search-container">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input type="text" class="form-input search-input" id="product-search" placeholder="Cari produk..." onkeyup="searchProducts()">
+            </div>
+
+            <div id="product-list" class="product-grid"></div>
+            <div class="empty-state" id="empty-products" style="display: none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                    <line x1="7" y1="7" x2="7.01" y2="7"/>
+                </svg>
+                <h3>Belum ada produk</h3>
+                <p>Tambahkan produk di halaman Input</p>
+            </div>
+        </div>
+
+        <!-- Halaman 3: Kasir -->
+        <div class="page" id="page-kasir">
+            <h2 class="section-title">Keranjang Belanja</h2>
+            
+            <div class="manual-input-section" id="manual-input-section" style="display: none;">
+                <div class="manual-input-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 20h9"/>
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                    </svg>
+                    Input Manual
+                </div>
+                <input type="text" class="manual-input" id="manual-price-input" placeholder="Contoh: 12000+3000+5000" inputmode="numeric" onkeyup="calculateManualTotal()">
+                <div class="manual-summary">
+                    <span>Total Item: <strong id="manual-item-count">0</strong></span>
+                    <span>Total Harga: <strong id="manual-total-price">Rp 0</strong></span>
+                </div>
+                <button class="add-manual-btn" onclick="addManualToCart()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="9" cy="21" r="1"/>
+                        <circle cx="20" cy="21" r="1"/>
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                    </svg>
+                    Tambah ke Keranjang
+                </button>
+            </div>
+
+            <div id="manual-cart-items"></div>
+
+            <div id="cart-items"></div>
+            <div class="empty-state" id="empty-cart" style="display: none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="9" cy="21" r="1"/>
+                    <circle cx="20" cy="21" r="1"/>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                </svg>
+                <h3>Keranjang kosong</h3>
+                <p>Tambahkan produk dari halaman Produk</p>
+            </div>
+            
+            <div id="cart-summary" style="display: none;">
+                <div class="summary-section">
+                    <div class="summary-row">
+                        <span class="summary-label">Total Item</span>
+                        <span class="summary-value" id="total-items">0</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">Total Harga</span>
+                        <span class="summary-value summary-total" id="total-price">Rp 0</span>
+                    </div>
+                </div>
+                
+                <div class="payment-section">
+                    <div class="form-group">
+                        <label class="form-label">Uang Diterima (Rp)</label>
+                        <div class="price-wrapper">
+                            <span class="price-prefix">Rp</span>
+                            <input type="text" class="form-input payment-input" id="payment-amount" placeholder="0" inputmode="numeric" pattern="[0-9.]*" onkeyup="formatPrice(this); calculateChange();" onblur="formatPrice(this); calculateChange();">
+                        </div>
+                    </div>
+                    
+                    <div class="change-display" id="change-display">Kembalian: Rp 0</div>
+                    
+                    <button class="btn btn-success" style="margin-top: 16px;" onclick="checkout()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22,4 12,14.01 9,11.01"/>
+                        </svg>
+                        Bayar & Selesai
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Halaman 4: Hutang -->
+        <div class="page" id="page-debt">
+            <h2 class="section-title">Manajemen Hutang</h2>
+            
+            <div class="debt-form">
+                <div class="form-group">
+                    <label class="form-label">Nama Penghutang</label>
+                    <input type="text" class="form-input" id="debt-name" placeholder="Contoh: Budi">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Deskripsi</label>
+                    <input type="text" class="form-input" id="debt-desc" placeholder="Contoh: Beli 3 pcs Indomie">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Nominal (Rp)</label>
+                    <div class="price-wrapper">
+                        <span class="price-prefix">Rp</span>
+                        <input type="text" class="form-input" id="debt-amount" placeholder="25.000" inputmode="numeric" pattern="[0-9.]*" onkeyup="formatPrice(this)" onblur="formatPrice(this)">
+                    </div>
+                </div>
+                
+                <button class="btn btn-primary" onclick="addDebt()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    Tambah Hutang
+                </button>
+            </div>
+
+            <div class="debt-list" id="debt-list"></div>
+
+            <div class="search-container">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input type="text" class="form-input search-input" id="debt-search" placeholder="Cari nama penghutang..." onkeyup="searchDebts()">
+            </div>
+
+            <div class="debt-summary-section" id="debt-summary-section">
+                <div class="debt-summary-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 20h9"/>
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                    </svg>
+                    Ringkasan Hutang per Pelanggan
+                </div>
+                <table class="debt-summary-table" id="debt-summary-table">
+                    <thead>
+                        <tr>
+                            <th>Nama Penghutang</th>
+                            <th style="text-align: right;">Total Hutang</th>
+                        </tr>
+                    </thead>
+                    <tbody id="debt-summary-body"></tbody>
+                </table>
+            </div>
+
+            <div class="empty-state" id="empty-debt" style="display: none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="1" x2="12" y2="23"/>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+                <h3>Belum ada hutang</h3>
+                <p>Catat hutang pelanggan di sini</p>
+            </div>
+        </div>
+
+        <!-- Halaman 5: Transaksi -->
+        <div class="page" id="page-transactions">
+            <h2 class="section-title">Riwayat Transaksi</h2>
+            <div id="transaction-list"></div>
+            <div class="empty-state" id="empty-transactions" style="display: none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14,2 14,8 20,8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10,9 9,9 8,9"/>
+                </svg>
+                <h3>Belum ada transaksi</h3>
+                <p>Transaksi akan muncul di sini</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" data-page="input" onclick="navigateTo(this, 'input')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14"/>
+            </svg>
+            <span>Input</span>
+        </div>
+        <div class="nav-item" data-page="products" onclick="navigateTo(this, 'products')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                <line x1="7" y1="7" x2="7.01" y2="7"/>
+            </svg>
+            <span>Produk</span>
+        </div>
+        <div class="nav-item" data-page="kasir" onclick="navigateTo(this, 'kasir')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="9" cy="21" r="1"/>
+                <circle cx="20" cy="21" r="1"/>
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+            <span>Kasir</span>
+            <span class="badge" id="cart-badge" style="display: none;">0</span>
+        </div>
+        <div class="nav-item" data-page="debt" onclick="navigateTo(this, 'debt')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="1" x2="12" y2="23"/>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+            <span>Hutang</span>
+        </div>
+        <div class="nav-item" data-page="transactions" onclick="navigateTo(this, 'transactions')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14,2 14,8 20,8"/>
+            </svg>
+            <span>Transaksi</span>
+        </div>
+    </nav>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Share Modal -->
+    <div class="modal-overlay" id="share-modal">
+        <div class="modal">
+            <h3 class="modal-title">Bagikan Data</h3>
+            <p class="modal-content">Pilih data yang ingin dibagikan:</p>
+            <div class="modal-actions" style="flex-direction: column; gap: 12px;">
+                <button class="btn btn-primary" onclick="shareProducts()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                    </svg>
+                    Bagikan Daftar Produk
+                </button>
+                <button class="btn btn-outline" onclick="shareDebts()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+                        <line x1="12" y1="1" x2="12" y2="23"/>
+                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                    </svg>
+                    Bagikan Daftar Hutang
+                </button>
+                <button class="btn btn-success" onclick="exportAllData()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7,10 12,15 17,10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Bagikan Data Isi APK
+                </button>
+                <button class="btn btn-primary" onclick="triggerImportData()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17,8 12,3 7,8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    Masukkan Data
+                </button>
+                <input type="file" id="import-file-input" accept=".json" onchange="importData(event)" style="display: none;">
+                <button class="btn btn-danger" onclick="closeShareModal()" style="margin-top: 8px;">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-overlay" id="delete-modal">
+        <div class="modal">
+            <h3 class="modal-title">Konfirmasi Hapus</h3>
+            <p class="modal-content">Apakah Anda yakin ingin menghapus item ini?</p>
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeDeleteModal()">Batal</button>
+                <button class="btn btn-danger" id="confirm-delete-btn">Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weight Input Modal -->
+    <div class="modal-overlay" id="weight-modal">
+        <div class="modal">
+            <h3 class="modal-title">Masukkan Berat</h3>
+            <div class="weight-modal-product">
+                <div class="weight-modal-name" id="weight-modal-product-name">Nama Produk</div>
+                <div class="weight-modal-info">
+                    <span>Harga per <span id="weight-modal-unit">kg</span>: Rp <span id="weight-modal-price">0</span></span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Berat yang dibeli (<span id="weight-modal-input-unit">kg</span>)</label>
+                <div class="weight-input-section">
+                    <input type="number" class="form-input" id="weight-modal-input" placeholder="0" inputmode="decimal" pattern="[0-9.]*" step="0.01">
+                    <span class="weight-unit active" id="weight-modal-unit-btn">kg</span>
+                </div>
+            </div>
+            <div class="weight-preview">
+                <div class="weight-preview-text">Total Harga</div>
+                <div class="weight-preview-price" id="weight-preview-price">Rp 0</div>
+            </div>
+            <div class="modal-actions" style="margin-top: 20px;">
+                <button class="btn btn-outline" onclick="closeWeightModal()">Batal</button>
+                <button class="btn btn-primary" id="confirm-weight-btn">Tambah</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data Storage
+        let products = JSON.parse(localStorage.getItem('warung_products')) || [];
+        let cart = JSON.parse(localStorage.getItem('warung_cart')) || [];
+        let manualCart = JSON.parse(localStorage.getItem('warung_manual_cart')) || [];
+        let debts = JSON.parse(localStorage.getItem('warung_debts')) || [];
+        let transactions = JSON.parse(localStorage.getItem('warung_transactions')) || [];
+        
+        let currentWeightUnit = 'kg';
+        let deleteTarget = null;
+        let deleteType = null;
+        
+        let videoStream = null;
+        let currentCamera = 'environment';
+        let capturedImage = null;
+        let weightModalProduct = null;
+        let productCameraFlashOn = false;
+        
+        let inputBarcodeScanner = null;
+        let productBarcodeScanner = null;
+        let inputBarcodeActive = false;
+        let productBarcodeActive = false;
+        let scannedBarcode = null;
+        let inputTorchOn = false;
+        let productTorchOn = false;
+
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let currentPage = 0;
+        const pages = ['input', 'products', 'kasir', 'debt', 'transactions'];
+
+        // Splash screen handler
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                document.getElementById('splash-screen').classList.add('hidden');
+            }, 2000);
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCartBadge();
+            renderProducts();
+            renderCart();
+            renderDebts();
+            renderTransactions();
+            renderDebtSummary();
+            initBarcodeScanners();
+            setupSwipeNavigation();
+            updateManualInputVisibility();
+        });
+
+        // ============ SWIPE NAVIGATION ============
+        function setupSwipeNavigation() {
+            const mainContent = document.getElementById('main-content');
+            
+            mainContent.addEventListener('touchstart', function(e) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }, { passive: true });
+            
+            mainContent.addEventListener('touchend', function(e) {
+                const touchEndX = e.changedTouches[0].clientX;
+                const touchEndY = e.changedTouches[0].clientY;
+                
+                const deltaX = touchEndX - touchStartX;
+                const deltaY = touchEndY - touchStartY;
+                
+                if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+                    if (deltaX > 0) {
+                        navigateToPrevious();
+                    } else {
+                        navigateToNext();
+                    }
+                }
+            }, { passive: true });
+        }
+        
+        function navigateToPrevious() {
+            if (currentPage > 0) {
+                currentPage--;
+                const navItems = document.querySelectorAll('.nav-item');
+                navigateTo(navItems[currentPage], pages[currentPage]);
+            }
+        }
+        
+        function navigateToNext() {
+            if (currentPage < pages.length - 1) {
+                currentPage++;
+                const navItems = document.querySelectorAll('.nav-item');
+                navigateTo(navItems[currentPage], pages[currentPage]);
+            }
+        }
+
+        // ============ NAVIGATION ============
+        function navigateTo(element, page) {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            element.classList.add('active');
+            currentPage = pages.indexOf(page);
+
+            document.querySelectorAll('.page').forEach(p => {
+                p.classList.remove('active');
+            });
+            
+            const targetPage = document.getElementById('page-' + page);
+            if (targetPage) {
+                targetPage.classList.add('active');
+            }
+
+            if (page === 'products') renderProducts();
+            if (page === 'kasir') renderCart();
+            if (page === 'debt') renderDebts();
+            if (page === 'transactions') renderTransactions();
+        }
+
+        // ============ BARCODE SCANNER FUNCTIONS ============
+        function initBarcodeScanners() {
+            inputBarcodeScanner = new Html5Qrcode("html5-code-input");
+            productBarcodeScanner = new Html5Qrcode("html5-code-product");
+        }
+
+        function toggleInputBarcodeScanner() {
+            const scannerContainer = document.getElementById('input-barcode-scanner');
+            const overlay = document.getElementById('input-barcode-overlay');
+            
+            if (scannerContainer.style.display === 'none') {
+                scannerContainer.style.display = 'block';
+                scannerContainer.classList.add('barcode-scanner-active');
+                overlay.onclick = startInputBarcodeScanner;
+            } else {
+                stopInputBarcodeScanner();
+                scannerContainer.style.display = 'none';
+                scannerContainer.classList.remove('barcode-scanner-active');
+            }
+        }
+
+        async function startInputBarcodeScanner() {
+            const overlay = document.getElementById('input-barcode-overlay');
+            const scanLine = document.getElementById('input-scan-line');
+            const torchBtn = document.getElementById('input-torch-btn');
+            
+            try {
+                await inputBarcodeScanner.start(
+                    { facingMode: "environment" },
+                    {
+                        fps: 10,
+                        qrbox: { width: 250, height: 80 },
+                        aspectRatio: 1.0
+                    },
+                    onInputBarcodeScan,
+                    onBarcodeScanError
+                );
+                
+                inputBarcodeActive = true;
+                overlay.style.display = 'none';
+                scanLine.style.display = 'block';
+                torchBtn.style.display = 'flex';
+                document.getElementById('input-barcode-scanner').classList.add('barcode-scanner-active');
+                showCloseCameraButton();
+                
+            } catch (err) {
+                console.error('Barcode scanner error:', err);
+                showToast('Tidak dapat mengakses kamera untuk scan barcode');
+            }
+        }
+
+        async function stopInputBarcodeScanner() {
+            if (inputBarcodeActive) {
+                try {
+                    await inputBarcodeScanner.stop();
+                } catch (err) {
+                    console.error('Error stopping scanner:', err);
+                }
+                inputBarcodeActive = false;
+                inputTorchOn = false;
+                document.getElementById('input-torch-btn').classList.remove('active');
+            }
+            
+            const overlay = document.getElementById('input-barcode-overlay');
+            const scanLine = document.getElementById('input-scan-line');
+            const torchBtn = document.getElementById('input-torch-btn');
+            overlay.style.display = 'flex';
+            scanLine.style.display = 'none';
+            torchBtn.style.display = 'none';
+            document.getElementById('input-barcode-scanner').classList.remove('barcode-scanner-active');
+            hideCloseCameraButton();
+        }
+
+        async function toggleInputTorch() {
+            if (!inputBarcodeActive) return;
+            
+            try {
+                const track = videoStream.getVideoTracks()[0];
+                if (track) {
+                    const capabilities = track.getCapabilities();
+                    if (capabilities.torch) {
+                        inputTorchOn = !inputTorchOn;
+                        await track.applyConstraints({
+                            advanced: [{ torch: inputTorchOn }]
+                        });
+                        document.getElementById('input-torch-btn').classList.toggle('active', inputTorchOn);
+                    } else {
+                        showToast('Senter tidak tersedia di perangkat ini');
+                    }
+                }
+            } catch (err) {
+                console.error('Torch error:', err);
+                showToast('Tidak dapat mengaktifkan senter');
+            }
+        }
+
+        function onInputBarcodeScan(decodedText) {
+            const existingProduct = products.find(p => p.barcode === decodedText);
+            if (existingProduct) {
+                showToast('Barcode sudah digunakan untuk: ' + existingProduct.name);
+            }
+            
+            scannedBarcode = decodedText;
+            document.getElementById('input-barcode-value').textContent = decodedText;
+            document.getElementById('input-barcode-display').style.display = 'flex';
+            
+            stopInputBarcodeScanner();
+            document.getElementById('input-barcode-scanner').style.display = 'none';
+            showToast('Barcode terdeteksi: ' + decodedText);
+        }
+
+        function clearInputBarcode() {
+            scannedBarcode = null;
+            document.getElementById('input-barcode-value').textContent = '-';
+            document.getElementById('input-barcode-display').style.display = 'none';
+        }
+
+        function toggleProductBarcodeScanner() {
+            const scannerContainer = document.getElementById('product-barcode-scanner');
+            const overlay = document.getElementById('product-barcode-overlay');
+            
+            if (scannerContainer.style.display === 'none') {
+                scannerContainer.style.display = 'block';
+                scannerContainer.classList.add('barcode-scanner-active');
+                overlay.onclick = startProductBarcodeScanner;
+            } else {
+                stopProductBarcodeScanner();
+                scannerContainer.style.display = 'none';
+                scannerContainer.classList.remove('barcode-scanner-active');
+            }
+        }
+
+        async function startProductBarcodeScanner() {
+            const overlay = document.getElementById('product-barcode-overlay');
+            const scanLine = document.getElementById('product-scan-line');
+            const torchBtn = document.getElementById('product-torch-btn');
+            
+            try {
+                await productBarcodeScanner.start(
+                    { facingMode: "environment" },
+                    {
+                        fps: 10,
+                        qrbox: { width: 250, height: 80 },
+                        aspectRatio: 1.0
+                    },
+                    onProductBarcodeScan,
+                    onBarcodeScanError
+                );
+                
+                productBarcodeActive = true;
+                overlay.style.display = 'none';
+                scanLine.style.display = 'block';
+                torchBtn.style.display = 'flex';
+                document.getElementById('product-barcode-scanner').classList.add('barcode-scanner-active');
+                showCloseCameraButton();
+                
+            } catch (err) {
+                console.error('Product barcode scanner error:', err);
+                showToast('Tidak dapat mengakses kamera untuk scan barcode');
+            }
+        }
+
+        async function stopProductBarcodeScanner() {
+            if (productBarcodeActive) {
+                try {
+                    await productBarcodeScanner.stop();
+                } catch (err) {
+                    console.error('Error stopping product scanner:', err);
+                }
+                productBarcodeActive = false;
+                productTorchOn = false;
+                document.getElementById('product-torch-btn').classList.remove('active');
+            }
+            
+            const overlay = document.getElementById('product-barcode-overlay');
+            const scanLine = document.getElementById('product-scan-line');
+            const torchBtn = document.getElementById('product-torch-btn');
+            overlay.style.display = 'flex';
+            scanLine.style.display = 'none';
+            torchBtn.style.display = 'none';
+            document.getElementById('product-barcode-scanner').classList.remove('barcode-scanner-active');
+            hideCloseCameraButton();
+        }
+
+        async function toggleProductTorch() {
+            if (!productBarcodeActive) return;
+            
+            try {
+                const track = videoStream.getVideoTracks()[0];
+                if (track) {
+                    const capabilities = track.getCapabilities();
+                    if (capabilities.torch) {
+                        productTorchOn = !productTorchOn;
+                        await track.applyConstraints({
+                            advanced: [{ torch: productTorchOn }]
+                        });
+                        document.getElementById('product-torch-btn').classList.toggle('active', productTorchOn);
+                    } else {
+                        showToast('Senter tidak tersedia di perangkat ini');
+                    }
+                }
+            } catch (err) {
+                console.error('Torch error:', err);
+                showToast('Tidak dapat mengaktifkan senter');
+            }
+        }
+
+        function onProductBarcodeScan(decodedText) {
+            const product = products.find(p => p.barcode === decodedText);
+            
+            stopProductBarcodeScanner();
+            document.getElementById('product-barcode-scanner').style.display = 'none';
+            
+            if (product) {
+                document.getElementById('barcode-result-name').textContent = product.name;
+                document.getElementById('barcode-result-barcode').textContent = product.barcode;
+                document.getElementById('barcode-result-price').textContent = 'Rp ' + formatNumber(product.price);
+                document.getElementById('barcode-search-result').classList.add('show');
+                
+                if (product.weight > 0) {
+                    openWeightModal(product.id);
+                } else {
+                    addToCart(product.id);
+                }
+                
+                showToast('Produk ditemukan: ' + product.name);
+            } else {
+                document.getElementById('barcode-result-name').textContent = 'Produk tidak ditemukan';
+                document.getElementById('barcode-result-barcode').textContent = decodedText;
+                document.getElementById('barcode-result-price').textContent = '-';
+                document.getElementById('barcode-search-result').classList.add('show');
+                showToast('Produk dengan barcode ini tidak ditemukan');
+            }
+        }
+
+        function clearBarcodeSearch() {
+            document.getElementById('barcode-search-result').classList.remove('show');
+        }
+
+        function onBarcodeScanError(error) {}
+
+        // ============ CLOSE CAMERA BUTTON ============
+        function showCloseCameraButton() {
+            document.getElementById('close-camera-btn').classList.add('show');
+        }
+        
+        function hideCloseCameraButton() {
+            document.getElementById('close-camera-btn').classList.remove('show');
+        }
+        
+        function stopAllCameras() {
+            if (inputBarcodeActive) {
+                stopInputBarcodeScanner();
+            }
+            if (productBarcodeActive) {
+                stopProductBarcodeScanner();
+            }
+            
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            
+            hideCloseCameraButton();
+            
+            const video = document.getElementById('camera-video');
+            const preview = document.getElementById('camera-preview');
+            const placeholder = document.getElementById('camera-placeholder');
+            const controls = document.getElementById('camera-controls');
+            
+            video.style.display = 'none';
+            video.srcObject = null;
+            preview.style.display = 'none';
+            placeholder.style.display = 'flex';
+            controls.classList.remove('active');
+            
+            showToast('Kamera ditutup');
+        }
+
+        // ============ CAMERA FUNCTIONS ============
+        async function startCamera() {
+            const video = document.getElementById('camera-video');
+            const placeholder = document.getElementById('camera-placeholder');
+            const controls = document.getElementById('camera-controls');
+            const actions = document.getElementById('camera-actions');
+
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: currentCamera,
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        torch: productCameraFlashOn
+                    },
+                    audio: false
+                });
+
+                video.srcObject = videoStream;
+                video.style.display = 'block';
+                placeholder.style.display = 'none';
+                controls.classList.add('active');
+                actions.style.display = 'flex';
+                
+                const switchBtn = document.getElementById('switch-camera-btn');
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    switchBtn.style.display = 'flex';
+                }
+                
+                showCloseCameraButton();
+                
+            } catch (err) {
+                console.error('Camera error:', err);
+                showToast('Tidak dapat mengakses kamera');
+                openGallery();
+            }
+        }
+
+        function switchCamera() {
+            currentCamera = currentCamera === 'environment' ? 'user' : 'environment';
+            
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+            }
+            
+            startCamera();
+        }
+
+        async function toggleProductCameraFlash() {
+            if (!videoStream) return;
+            
+            try {
+                const track = videoStream.getVideoTracks()[0];
+                if (track) {
+                    const capabilities = track.getCapabilities();
+                    if (capabilities.torch) {
+                        productCameraFlashOn = !productCameraFlashOn;
+                        await track.applyConstraints({
+                            advanced: [{ torch: productCameraFlashOn }]
+                        });
+                        document.getElementById('product-flash-btn').classList.toggle('active', productCameraFlashOn);
+                    } else {
+                        showToast('Senter tidak tersedia di perangkat ini');
+                    }
+                }
+            } catch (err) {
+                console.error('Flash error:', err);
+                showToast('Tidak dapat mengaktifkan senter');
+            }
+        }
+
+        function capturePhoto() {
+            const video = document.getElementById('camera-video');
+            const preview = document.getElementById('camera-preview');
+            const placeholder = document.getElementById('camera-placeholder');
+            const controls = document.getElementById('camera-controls');
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            capturedImage = canvas.toDataURL('image/jpeg', 0.7);
+            
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            
+            video.style.display = 'none';
+            preview.src = capturedImage;
+            preview.style.display = 'block';
+            controls.classList.remove('active');
+            
+            hideCloseCameraButton();
+            showToast('Foto berhasil diambil');
+        }
+
+        function openGallery() {
+            document.getElementById('gallery-input').click();
+        }
+
+        function handleGallerySelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    if (videoStream) {
+                        videoStream.getTracks().forEach(track => track.stop());
+                        videoStream = null;
+                    }
+                    
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const maxSize = 300;
+                        
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        if (width > height) {
+                            if (width > maxSize) {
+                                height *= maxSize / width;
+                                width = maxSize;
+                            }
+                        } else {
+                            if (height > maxSize) {
+                                width *= maxSize / height;
+                                height = maxSize;
+                            }
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        capturedImage = canvas.toDataURL('image/jpeg', 0.7);
+                        
+                        const video = document.getElementById('camera-video');
+                        const preview = document.getElementById('camera-preview');
+                        const placeholder = document.getElementById('camera-placeholder');
+                        const controls = document.getElementById('camera-controls');
+                        const actions = document.getElementById('camera-actions');
+                        
+                        video.style.display = 'none';
+                        preview.src = capturedImage;
+                        preview.style.display = 'block';
+                        controls.classList.remove('active');
+                        actions.style.display = 'flex';
+                        
+                        hideCloseCameraButton();
+                        showToast('Foto dipilih');
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // ============ PRODUCT FUNCTIONS ============
+        function setWeightUnit(unit) {
+            currentWeightUnit = unit;
+            document.getElementById('unit-kg').classList.toggle('active', unit === 'kg');
+            document.getElementById('unit-gram').classList.toggle('active', unit === 'gram');
+        }
+
+        function formatPrice(input) {
+            let value = input.value.replace(/\D/g, '');
+            value = value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            input.value = value;
+        }
+
+        function parsePrice(value) {
+            return parseInt(value.replace(/\D/g, '')) || 0;
+        }
+
+        function addProduct() {
+            const name = document.getElementById('product-name').value.trim();
+            const price = parsePrice(document.getElementById('product-price').value);
+            const weight = parseFloat(document.getElementById('product-weight').value) || 0;
+            const desc = document.getElementById('product-desc').value.trim();
+            const image = capturedImage;
+            const barcode = scannedBarcode;
+
+            if (!name) {
+                showToast('Nama produk wajib diisi');
+                return;
+            }
+            if (price <= 0) {
+                showToast('Harga produk wajib diisi');
+                return;
+            }
+
+            const product = {
+                id: Date.now(),
+                name: name,
+                price: price,
+                weight: weight,
+                unit: currentWeightUnit,
+                desc: desc,
+                image: image || null,
+                barcode: barcode || null,
+                createdAt: new Date().toISOString()
+            };
+
+            products.push(product);
+            localStorage.setItem('warung_products', JSON.stringify(products));
+
+            document.getElementById('product-name').value = '';
+            document.getElementById('product-price').value = '';
+            document.getElementById('product-weight').value = '';
+            document.getElementById('product-desc').value = '';
+            document.getElementById('camera-preview').src = '';
+            document.getElementById('camera-preview').style.display = 'none';
+            document.getElementById('camera-placeholder').style.display = 'flex';
+            document.getElementById('camera-actions').style.display = 'none';
+            capturedImage = null;
+            clearInputBarcode();
+
+            showToast('Produk berhasil ditambahkan');
+            
+            setTimeout(() => {
+                document.querySelectorAll('.nav-item')[1].click();
+            }, 1000);
+        }
+
+        function searchProducts() {
+            renderProducts();
+        }
+
+        function renderProducts() {
+            const container = document.getElementById('product-list');
+            const emptyState = document.getElementById('empty-products');
+            const searchTerm = document.getElementById('product-search').value.toLowerCase();
+
+            let filteredProducts = products;
+            if (searchTerm) {
+                filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm));
+            }
+
+            if (filteredProducts.length === 0) {
+                container.innerHTML = '';
+                emptyState.style.display = 'flex';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            container.innerHTML = filteredProducts.map(product => `
+                <div class="product-card">
+                    <img class="product-image" src="${product.image || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect fill=%22%23E5E7EB%22 width=%22100%22 height=%22100%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%239CA3AF%22 font-size=%2212%22>No Image</text></svg>'}" alt="${product.name}">
+                    <div class="product-info">
+                        <div class="product-name">${product.name}</div>
+                        ${product.barcode ? `<div class="product-barcode">${product.barcode}</div>` : ''}
+                        <div class="product-price">Rp ${formatNumber(product.price)}</div>
+                        <div class="product-weight">Berat: ${product.weight > 0 ? product.weight + ' ' + product.unit : 'Tidak punya berat'}${product.desc ? ' • ' + product.desc : ''}</div>
+                        <div class="product-actions">
+                            ${product.weight > 0 ? `
+                                <button class="product-btn product-btn-cart" onclick="openWeightModal(${product.id})">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="9" cy="21" r="1"/>
+                                        <circle cx="20" cy="21" r="1"/>
+                                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                                    </svg>
+                                    Tambah
+                                </button>
+                            ` : `
+                                <button class="product-btn product-btn-cart" onclick="addToCart(${product.id})">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="9" cy="21" r="1"/>
+                                        <circle cx="20" cy="21" r="1"/>
+                                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                                    </svg>
+                                    Keranjang
+                                </button>
+                            `}
+                            <button class="product-btn product-btn-delete" onclick="confirmDelete(${product.id}, 'product')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3,6 5,6 21,6"/>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ============ MANUAL INPUT FUNCTIONS ============
+        function updateManualInputVisibility() {
+            const section = document.getElementById('manual-input-section');
+            if (products.length === 0 || manualCart.length > 0) {
+                section.style.display = 'block';
+            } else {
+                section.style.display = 'none';
+            }
+        }
+        
+        function calculateManualTotal() {
+            const input = document.getElementById('manual-price-input').value;
+            const itemCountEl = document.getElementById('manual-item-count');
+            const totalPriceEl = document.getElementById('manual-total-price');
+            
+            const numbers = input.split('+').map(s => parsePrice(s.trim())).filter(n => n > 0);
+            
+            const itemCount = numbers.length;
+            const totalPrice = numbers.reduce((sum, n) => sum + n, 0);
+            
+            itemCountEl.textContent = itemCount;
+            totalPriceEl.textContent = 'Rp ' + formatNumber(totalPrice);
+        }
+        
+        function addManualToCart() {
+            const input = document.getElementById('manual-price-input').value;
+            const numbers = input.split('+').map(s => parsePrice(s.trim())).filter(n => n > 0);
+            
+            if (numbers.length === 0) {
+                showToast('Masukkan nominal harga');
+                return;
+            }
+            
+            numbers.forEach(price => {
+                manualCart.push({
+                    id: Date.now() + Math.random(),
+                    name: 'Item Manual',
+                    price: price,
+                    qty: 1,
+                    isManual: true
+                });
+            });
+            
+            localStorage.setItem('warung_manual_cart', JSON.stringify(manualCart));
+            
+            document.getElementById('manual-price-input').value = '';
+            document.getElementById('manual-item-count').textContent = '0';
+            document.getElementById('manual-total-price').textContent = 'Rp 0';
+            
+            updateCartBadge();
+            renderCart();
+            showToast('Item manual ditambahkan ke keranjang');
+        }
+        
+        function removeManualFromCart(id) {
+            manualCart = manualCart.filter(item => item.id !== id);
+            localStorage.setItem('warung_manual_cart', JSON.stringify(manualCart));
+            updateCartBadge();
+            renderCart();
+        }
+
+        // ============ CART FUNCTIONS ============
+        function openWeightModal(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            weightModalProduct = product;
+            
+            document.getElementById('weight-modal-product-name').textContent = product.name;
+            document.getElementById('weight-modal-unit').textContent = product.unit;
+            document.getElementById('weight-modal-price').textContent = formatNumber(product.price);
+            document.getElementById('weight-modal-input-unit').textContent = product.unit;
+            document.getElementById('weight-modal-unit-btn').textContent = product.unit;
+            document.getElementById('weight-modal-input').value = '';
+            document.getElementById('weight-preview-price').textContent = 'Rp 0';
+            
+            document.getElementById('confirm-weight-btn').onclick = () => addWeightedProduct(product);
+            
+            document.getElementById('weight-modal').classList.add('show');
+            
+            setTimeout(() => {
+                document.getElementById('weight-modal-input').focus();
+            }, 100);
+        }
+
+        function closeWeightModal() {
+            document.getElementById('weight-modal').classList.remove('show');
+            weightModalProduct = null;
+        }
+
+        function addWeightedProduct(product) {
+            const input = document.getElementById('weight-modal-input');
+            const purchaseWeight = parseFloat(input.value) || 0;
+
+            if (purchaseWeight <= 0) {
+                showToast('Masukkan berat yang dibeli');
+                return;
+            }
+
+            let purchasePrice = 0;
+            
+            if (product.weight > 0) {
+                purchasePrice = (purchaseWeight / product.weight) * product.price;
+            }
+
+            purchasePrice = Math.round(purchasePrice);
+
+            cart.push({
+                id: product.id,
+                name: product.name,
+                price: purchasePrice,
+                image: product.image,
+                qty: 1,
+                isWeighted: true,
+                weight: purchaseWeight,
+                weightUnit: product.unit,
+                pricePerUnit: product.price,
+                unitWeight: product.weight
+            });
+
+            localStorage.setItem('warung_cart', JSON.stringify(cart));
+            updateCartBadge();
+            closeWeightModal();
+            showToast('Ditambahkan ke keranjang');
+        }
+
+        document.getElementById('weight-modal-input').addEventListener('input', function() {
+            if (!weightModalProduct) return;
+            
+            const purchaseWeight = parseFloat(this.value) || 0;
+            let price = 0;
+            
+            if (purchaseWeight > 0 && weightModalProduct.weight > 0) {
+                price = (purchaseWeight / weightModalProduct.weight) * weightModalProduct.price;
+            }
+            
+            document.getElementById('weight-preview-price').textContent = 'Rp ' + formatNumber(Math.round(price));
+        });
+
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            const existingItem = cart.find(item => item.id === productId && !item.isWeighted && !item.isManual);
+            if (existingItem) {
+                existingItem.qty += 1;
+                existingItem.price = product.price * existingItem.qty;
+            } else {
+                cart.push({
+                    id: productId,
+                    name: product.name,
+                    price: product.price,
+                    image: product.image,
+                    qty: 1,
+                    isWeighted: false,
+                    isManual: false
+                });
+            }
+
+            localStorage.setItem('warung_cart', JSON.stringify(cart));
+            updateCartBadge();
+            showToast('Ditambahkan ke keranjang');
+        }
+
+        function updateCartBadge() {
+            const badge = document.getElementById('cart-badge');
+            const regularQty = cart.reduce((sum, item) => sum + item.qty, 0);
+            const manualQty = manualCart.length;
+            const totalQty = regularQty + manualQty;
+            
+            if (totalQty > 0) {
+                badge.textContent = totalQty > 9 ? '9+' : totalQty;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        function renderCart() {
+            const container = document.getElementById('cart-items');
+            const manualContainer = document.getElementById('manual-cart-items');
+            const emptyState = document.getElementById('empty-cart');
+            const summary = document.getElementById('cart-summary');
+
+            if (manualCart.length > 0) {
+                manualContainer.innerHTML = manualCart.map(item => `
+                    <div class="manual-cart-item">
+                        <div class="manual-cart-item-details">
+                            <div class="manual-cart-item-name">${item.name}</div>
+                            <div class="manual-cart-item-price">Rp ${formatNumber(item.price)}</div>
+                        </div>
+                        <button class="manual-cart-item-remove" onclick="removeManualFromCart(${item.id})">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
+                `).join('');
+            } else {
+                manualContainer.innerHTML = '';
+            }
+
+            const totalItems = cart.length + manualCart.length;
+
+            if (totalItems === 0) {
+                container.innerHTML = '';
+                emptyState.style.display = 'flex';
+                summary.style.display = 'none';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            summary.style.display = 'block';
+
+            let totalPrice = 0;
+
+            container.innerHTML = cart.map(item => {
+                totalPrice += item.price;
+
+                let weightText = '';
+                let priceDisplay = '';
+                
+                if (item.isWeighted) {
+                    weightText = `<div class="cart-item-weight">${item.weight} ${item.weightUnit} × Rp ${formatNumber(item.pricePerUnit)}/${item.unitWeight === 1 ? item.weightUnit : item.unitWeight}</div>`;
+                    priceDisplay = `Rp ${formatNumber(item.price)}`;
+                } else {
+                    const pricePerUnit = item.price / item.qty;
+                    priceDisplay = `Rp ${formatNumber(pricePerUnit)} × ${item.qty} = Rp ${formatNumber(item.price)}`;
+                }
+
+                return `
+                    <div class="cart-item">
+                        <img class="cart-item-image" src="${item.image || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22><rect fill=%22%23E5E7EB%22 width=%2260%22 height=%2260%22/></svg>'}" alt="${item.name}">
+                        <div class="cart-item-details">
+                            <div class="cart-item-name">${item.name}</div>
+                            <div class="cart-item-price">${priceDisplay}</div>
+                            ${weightText}
+                        </div>
+                        <div class="cart-item-actions">
+                            ${!item.isWeighted && !item.isManual ? `
+                                <button class="qty-btn" onclick="updateCartQty(${item.id}, -1)">-</button>
+                                <span style="font-weight: 600; min-width: 24px; text-align: center;">${item.qty}</span>
+                                <button class="qty-btn" onclick="updateCartQty(${item.id}, 1)">+</button>
+                            ` : ''}
+                            <button class="remove-item-btn" onclick="removeFromCartByIndex(${cart.indexOf(item)})">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"/>
+                                    <line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const manualTotal = manualCart.reduce((sum, item) => sum + item.price, 0);
+            totalPrice += manualTotal;
+
+            document.getElementById('total-items').textContent = totalItems + ' item';
+            document.getElementById('total-price').textContent = 'Rp ' + formatNumber(totalPrice);
+        }
+
+        function updateCartQty(productId, change) {
+            const item = cart.find(i => i.id === productId && !i.isWeighted && !i.isManual);
+            if (item) {
+                item.qty += change;
+                
+                const product = products.find(p => p.id === productId);
+                if (product) {
+                    item.price = product.price * item.qty;
+                }
+                
+                if (item.qty <= 0) {
+                    cart = cart.filter(i => i.id !== productId || i.isWeighted || i.isManual);
+                }
+                localStorage.setItem('warung_cart', JSON.stringify(cart));
+                updateCartBadge();
+                renderCart();
+            }
+        }
+
+        function removeFromCartByIndex(index) {
+            if (index >= 0 && index < cart.length) {
+                cart.splice(index, 1);
+                localStorage.setItem('warung_cart', JSON.stringify(cart));
+                updateCartBadge();
+                renderCart();
+                showToast('Item dihapus dari keranjang');
+            }
+        }
+
+        function calculateChange() {
+            const payment = parsePrice(document.getElementById('payment-amount').value);
+            
+            const cartTotal = cart.reduce((sum, item) => sum + item.price, 0);
+            const manualTotal = manualCart.reduce((sum, item) => sum + item.price, 0);
+            const total = cartTotal + manualTotal;
+            
+            const change = payment - total;
+
+            const changeDisplay = document.getElementById('change-display');
+            if (payment > 0) {
+                if (change >= 0) {
+                    changeDisplay.className = 'change-display change-positive';
+                    changeDisplay.innerHTML = `Kembalian: <strong>Rp ${formatNumber(change)}</strong>`;
+                } else {
+                    changeDisplay.className = 'change-display change-negative';
+                    changeDisplay.innerHTML = `Kurang: <strong>Rp ${formatNumber(Math.abs(change))}</strong>`;
+                }
+            } else {
+                changeDisplay.className = 'change-display';
+                changeDisplay.textContent = 'Kembalian: Rp 0';
+            }
+        }
+
+        function checkout() {
+            if (cart.length === 0 && manualCart.length === 0) {
+                showToast('Keranjang kosong');
+                return;
+            }
+
+            const payment = parsePrice(document.getElementById('payment-amount').value);
+            
+            const cartTotal = cart.reduce((sum, item) => sum + item.price, 0);
+            const manualTotal = manualCart.reduce((sum, item) => sum + item.price, 0);
+            const total = cartTotal + manualTotal;
+
+            if (payment < total && payment > 0) {
+                showToast('Uang tidak cukup');
+                return;
+            }
+
+            const allItems = [
+                ...cart.map(item => ({
+                    name: item.name,
+                    qty: item.qty,
+                    price: item.price,
+                    subtotal: item.price,
+                    isWeighted: item.isWeighted || false,
+                    weight: item.weight || 0,
+                    weightUnit: item.weightUnit || '',
+                    isManual: false
+                })),
+                ...manualCart.map(item => ({
+                    name: item.name,
+                    qty: 1,
+                    price: item.price,
+                    subtotal: item.price,
+                    isWeighted: false,
+                    weight: 0,
+                    weightUnit: '',
+                    isManual: true
+                }))
+            ];
+
+            const transaction = {
+                id: Date.now(),
+                date: new Date().toISOString(),
+                items: allItems,
+                total: total,
+                payment: payment,
+                change: payment - total
+            };
+
+            transactions.unshift(transaction);
+            localStorage.setItem('warung_transactions', JSON.stringify(transactions));
+
+            cart = [];
+            manualCart = [];
+            localStorage.setItem('warung_cart', JSON.stringify(cart));
+            localStorage.setItem('warung_manual_cart', JSON.stringify(manualCart));
+            updateCartBadge();
+
+            document.getElementById('payment-amount').value = '';
+            document.getElementById('change-display').className = 'change-display';
+            document.getElementById('change-display').textContent = 'Kembalian: Rp 0';
+
+            showToast('Transaksi berhasil!');
+            
+            setTimeout(() => {
+                document.querySelectorAll('.nav-item')[4].click();
+            }, 1000);
+        }
+
+        // ============ DEBT FUNCTIONS ============
+        function addDebt() {
+            const name = document.getElementById('debt-name').value.trim();
+            const desc = document.getElementById('debt-desc').value.trim();
+            const amount = parsePrice(document.getElementById('debt-amount').value);
+
+            if (!name) {
+                showToast('Nama penghutang wajib diisi');
+                return;
+            }
+            if (amount <= 0) {
+                showToast('Nominal hutang wajib diisi');
+                return;
+            }
+
+            const debt = {
+                id: Date.now(),
+                name: name,
+                desc: desc,
+                amount: amount,
+                date: new Date().toISOString()
+            };
+
+            debts.push(debt);
+            localStorage.setItem('warung_debts', JSON.stringify(debts));
+
+            document.getElementById('debt-name').value = '';
+            document.getElementById('debt-desc').value = '';
+            document.getElementById('debt-amount').value = '';
+
+            showToast('Hutang berhasil ditambahkan');
+            renderDebts();
+            renderDebtSummary();
+        }
+
+        function searchDebts() {
+            renderDebts();
+        }
+
+        function renderDebts() {
+            const searchTerm = document.getElementById('debt-search').value.toLowerCase();
+            const container = document.getElementById('debt-list');
+            const emptyState = document.getElementById('empty-debt');
+
+            let filteredDebts = debts;
+            if (searchTerm) {
+                filteredDebts = debts.filter(d => d.name.toLowerCase().includes(searchTerm));
+            }
+
+            if (filteredDebts.length === 0) {
+                container.innerHTML = '';
+                emptyState.style.display = 'flex';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+
+            container.innerHTML = filteredDebts.map(debt => `
+                <div class="debt-item">
+                    <div class="debt-info">
+                        <div class="debt-name">${debt.name}</div>
+                        <div class="debt-desc">${debt.desc || 'Tanpa deskripsi'}</div>
+                        <div class="debt-date">${formatDate(debt.date)}</div>
+                    </div>
+                    <div class="debt-amount">Rp ${formatNumber(debt.amount)}</div>
+                    <div class="debt-actions">
+                        <button class="debt-action-btn debt-share-btn" onclick="shareDebt(${debt.id})">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                                <polyline points="16,6 12,2 8,6"/>
+                                <line x1="12" y1="2" x2="12" y2="15"/>
+                            </svg>
+                        </button>
+                        <button class="debt-action-btn debt-delete-btn" onclick="confirmDelete(${debt.id}, 'debt')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3,6 5,6 21,6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderDebtSummary() {
+            const tbody = document.getElementById('debt-summary-body');
+            
+            if (debts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="2" style="text-align: center; color: var(--text-muted);">Belum ada hutang</td></tr>';
+                return;
+            }
+
+            const totalsByName = {};
+            debts.forEach(debt => {
+                if (!totalsByName[debt.name]) {
+                    totalsByName[debt.name] = 0;
+                }
+                totalsByName[debt.name] += debt.amount;
+            });
+
+            tbody.innerHTML = Object.entries(totalsByName)
+                .sort((a, b) => b[1] - a[1])
+                .map(([name, total]) => `
+                    <tr>
+                        <td>${name}</td>
+                        <td>Rp ${formatNumber(total)}</td>
+                    </tr>
+                `).join('');
+        }
+
+        // ============ TRANSACTION FUNCTIONS ============
+        function renderTransactions() {
+            const container = document.getElementById('transaction-list');
+            const emptyState = document.getElementById('empty-transactions');
+
+            if (transactions.length === 0) {
+                container.innerHTML = '';
+                emptyState.style.display = 'flex';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            container.innerHTML = transactions.map(tx => `
+                <div class="transaction-item">
+                    <div class="transaction-header">
+                        <span class="transaction-date">${formatDateTime(tx.date)}</span>
+                        <span class="transaction-total">Rp ${formatNumber(tx.total)}</span>
+                    </div>
+                    <div class="transaction-items">
+                        ${tx.items.map(item => `
+                            <div class="transaction-product">
+                                <span>${item.name} ${item.isWeighted ? '(' + item.weight + ' ' + item.weightUnit + ')' : item.isManual ? '(Manual)' : '× ' + item.qty}</span>
+                                <span>Rp ${formatNumber(item.subtotal)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ============ DATA EXPORT/IMPORT FUNCTIONS ============
+        function exportAllData() {
+            const data = {
+                version: '1.0',
+                exportDate: new Date().toISOString(),
+                products: products,
+                debts: debts,
+                transactions: transactions
+            };
+            
+            const dataStr = JSON.stringify(data, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const date = new Date().toISOString().split('T')[0];
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `backup_warung_${date}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            closeShareModal();
+            showToast('Data berhasil diunduh');
+        }
+        
+        function triggerImportData() {
+            document.getElementById('import-file-input').click();
+        }
+        
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    if (!data.products || !Array.isArray(data.products)) {
+                        throw new Error('Format data tidak valid');
+                    }
+                    
+                    products = data.products || [];
+                    debts = data.debts || [];
+                    transactions = data.transactions || [];
+                    
+                    localStorage.setItem('warung_products', JSON.stringify(products));
+                    localStorage.setItem('warung_debts', JSON.stringify(debts));
+                    localStorage.setItem('warung_transactions', JSON.stringify(transactions));
+                    
+                    closeShareModal();
+                    showToast('Data berhasil dipulihkan!');
+                    
+                    renderProducts();
+                    renderDebts();
+                    renderTransactions();
+                    renderDebtSummary();
+                    
+                } catch (err) {
+                    console.error('Import error:', err);
+                    showToast('Gagal memuat data: ' + err.message);
+                }
+                
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        // ============ SHARE FUNCTIONS ============
+        function showShareOptions() {
+            document.getElementById('share-modal').classList.add('show');
+        }
+
+        function closeShareModal() {
+            document.getElementById('share-modal').classList.remove('show');
+        }
+
+        function shareProducts() {
+            if (products.length === 0) {
+                showToast('Belum ada produk untuk dibagikan');
+                return;
+            }
+
+            let text = 'DAFTAR PRODUK WARUNG KITA\n\n';
+            products.forEach((p, i) => {
+                text += `${i + 1}. ${p.name}\n`;
+                text += `   Rp ${formatNumber(p.price)}\n`;
+                if (p.barcode) text += `   Barcode: ${p.barcode}\n`;
+                if (p.weight) text += `   Berat: ${p.weight} ${p.unit}\n`;
+                text += '\n';
+            });
+
+            shareText(text);
+            closeShareModal();
+        }
+
+        function shareDebts() {
+            if (debts.length === 0) {
+                showToast('Belum ada hutang untuk dibagikan');
+                return;
+            }
+
+            const grouped = {};
+            debts.forEach(d => {
+                if (!grouped[d.name]) grouped[d.name] = 0;
+                grouped[d.name] += d.amount;
+            });
+
+            let text = 'LAPORAN HUTANG WARUNG KITA\n\n';
+            Object.entries(grouped).forEach(([name, total]) => {
+                text += `${name}: Rp ${formatNumber(total)}\n`;
+            });
+            text += `\nTotal: Rp ${formatNumber(debts.reduce((s, d) => s + d.amount, 0))}`;
+
+            shareText(text);
+            closeShareModal();
+        }
+
+        function shareDebt(id) {
+            const debt = debts.find(d => d.id === id);
+            if (!debt) return;
+
+            const text = `Halo ${debt.name}, reminder bahwa Anda memiliki hutang sebesar Rp ${formatNumber(debt.amount)} untuk ${debt.desc || 'pembelian di Warung Kita'}. Mohon segera dilunasi. Terima kasih.`;
+            shareText(text);
+        }
+
+        function shareText(text) {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'kasir.dixz',
+                    text: text
+                }).catch(() => {
+                    copyToClipboard(text);
+                });
+            } else {
+                copyToClipboard(text);
+            }
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('Teks disalin ke clipboard');
+            }).catch(() => {
+                showToast('Gagal menyalin teks');
+            });
+        }
+
+        // ============ DELETE FUNCTIONS ============
+        function confirmDelete(id, type) {
+            deleteTarget = id;
+            deleteType = type;
+            document.getElementById('confirm-delete-btn').onclick = () => {
+                if (deleteType === 'product') {
+                    products = products.filter(p => p.id !== deleteTarget);
+                    localStorage.setItem('warung_products', JSON.stringify(products));
+                    renderProducts();
+                    showToast('Produk dihapus');
+                } else if (deleteType === 'debt') {
+                    debts = debts.filter(d => d.id !== deleteTarget);
+                    localStorage.setItem('warung_debts', JSON.stringify(debts));
+                    renderDebts();
+                    renderDebtSummary();
+                    showToast('Hutang dihapus');
+                }
+                closeDeleteModal();
+            };
+            document.getElementById('delete-modal').classList.add('show');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('delete-modal').classList.remove('show');
+            deleteTarget = null;
+            deleteType = null;
+        }
+
+        // ============ UTILITY FUNCTIONS ============
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('id-ID', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
+        }
+
+        function formatDateTime(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('id-ID', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2500);
+        }
+
+        document.getElementById('share-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeShareModal();
+        });
+
+        document.getElementById('delete-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeDeleteModal();
+        });
+
+        document.getElementById('weight-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeWeightModal();
+        });
+
+        window.addEventListener('beforeunload', function() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+            }
+            if (inputBarcodeActive) {
+                inputBarcodeScanner.stop();
+            }
+            if (productBarcodeActive) {
+                productBarcodeScanner.stop();
+            }
+        });
+    </script>
+</body>
+</html>
